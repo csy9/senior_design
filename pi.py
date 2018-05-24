@@ -4,6 +4,7 @@
 # Casey O'Neill
 
 import RPi.GPIO as gpio
+import time
 
 class Pi(object):
     """ Class designed for use on a Raspberry Pi 2.
@@ -30,26 +31,21 @@ class Pi(object):
         self.pwmpins = {}
 
         # Initialize all digital outputs
-        try:
-            for (digpin, mode) in digouts:
-                if mode == 'in':
-                    gpio.setup(digpin, gpio.OUT)
-                elif mode == 'out':
-                    gpio.setup(digpin, gpio.IN)
-                else:
-                    raise Exception('Invalid digital pin mode supplid.')
-        except:
-            raise Exception('Error when initializing digital pin modes. \
-                             Verify that the supplied pin numbers are correct.')
+        for (digpin, mode) in digouts:
+            if mode == 'in':
+                gpio.setup(digpin, gpio.OUT)
+            elif mode == 'out':
+                gpio.setup(digpin, gpio.IN)
+            else:
+                raise Exception('Invalid digital pin mode supplid.')
 
         # Initialize pwm outputs
-        try:
-            for (pwmpin, freq) in pwmouts:
-                self.pwmpins[pwmpin] = gpio.pwm(pwmpin, freq)
-        except:
-            raise Exception('Error when initializing pwm pin modes. \
-                             Verify that the supplied pin numbers and \
-                             frequencies are correct.')
+        for (pwmpin, freq) in pwmouts:
+            gpio.setup(pwmpin, gpio.OUT)
+            self.pwmpins[pwmpin] = gpio.PWM(pwmpin, freq)
+
+    def setdigout(self, pin, val):
+        gpio.setup(pin, val);
 
     def setpwm(self, pin, dutycycle):
         """ """
@@ -60,3 +56,15 @@ class Pi(object):
             self.pwmpins[pin].ChangeDutyCycle(dutycycle)
         else:
             raise Exception('Supplied pwm pin number not set up for pwm.')
+
+    def pwmstart(self, pin, dutycycle):
+        p = self.pwmpins[pin]
+        p.start(dutycycle)
+
+if __name__ == "__main__":
+    digouts = [(11, 'out')]
+    pwmouts = [(12, 500000)]
+    pi = Pi(digouts, pwmouts)
+    pi.setdigout(11, 1)
+    pi.pwmstart(12, 90)
+    time.sleep(5)
