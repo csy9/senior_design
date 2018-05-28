@@ -8,8 +8,7 @@ import time
 
 class Pi(object):
     """ Class designed for use on a Raspberry Pi 2.
-        Sets everything up and makes it easier to
-        control devices with the GPIO pins.
+        Simplifies use cases of having a single PWM and Digital pin.
     """
     def __init__(self, digouts=[], pwmouts=[]):
         """ digouts expect a list of pairs:
