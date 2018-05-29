@@ -1,12 +1,14 @@
-#!/usr/bin/python2
+#! /usr/bin/python2
+# Object Tracking Interface
+# Senior Design Group 4
+# Casey O'Neill
 
-import os
 import subprocess
 import cv2 as cv
 
 class Tracker(object):
     def __init__(self, filename):
-        """ Initializes MIL tracker object on a stream of images named filename """
+        """ Initializes tracker object on a stream of images named filename """
         self.filename = filename
         # Take initial image (at 1/4th size) and save dimensions
         img = self._capture()
@@ -31,7 +33,7 @@ class Tracker(object):
         img = cv.imread(self.filename, 1)
         return cv.resize(img, (0,0), fx=0.2, fy=0.2)
 
-    def track(self):
+    def update(self):
         """ Capture an image and update the location of the tracked object """
         # Update tracking frame
         frame = self._capture()
@@ -60,6 +62,6 @@ if __name__ == '__main__':
     # Start tracking
     tracker = Tracker(filename)
     while True:
-        tracker.track()
+        tracker.update()
         if (cv.waitKey(60) & 0xff == 27):
             break
