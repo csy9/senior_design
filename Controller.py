@@ -11,27 +11,25 @@ from Tracker import Tracker
 
 class Controller(object):
     """ Implementation of discrete controller for the magnet. """
-    def __init__(self, Kp=1, Kd=0):
-        self.Kp = Kp
-        self.Kd = Kd
-        self.prev_err = 0
-        self.cx = None
-        self.cy = None
-        self.rad = None
+    def __init__(self, cx=None, cy=None, rad=None):
+        self.cx = cx
+        self.cy = cy
+        self.rad = rad
 
         # Add Raspberry Pi Device
         self.pi = Pi()
 
         # Initialize tracker, get template/trackpoint
         self.tracker = Tracker('img.jpg')
-        raw_input('Hit enter to specify template...')
-        self._getTemplate()
+        if rad is None:
+            raw_input('Hit enter to specify template...')
+            self._getTemplate()
         raw_input('Hit enter to specify tracking object...')
         self.tracker.setTrackpoint()
 
         # Make video output writer
         fourcc = cv.VideoWriter_fourcc(*'XVID')
-        self.out = cv.VideoWriter('output.avi', fourcc, 20.0, 
+        self.out = cv.VideoWriter('output.avi', fourcc, 1.0, 
                                   (self.tracker.w, self.tracker.h))
 
     def _getTemplate(self):
@@ -84,30 +82,43 @@ class Controller(object):
         """ Control the motor position to guide magnet along trajectory. """
         # Update box position and compute midpoint
         img, box = self.tracker.update()
-        if box is None:
-            return
 
-        # Compute midpoint of box
-        x, y, w, h = box
-        mx = (x + float(x+w)) / 2
-        my = (y + float(y+h)) / 2
+        if box is not None:
+            # Compute midpoint of box
+            x, y, w, h = box
+            mx = (x + float(x+w)) / 2
+            my = (y + float(y+h)) / 2
 
-        # Compute distance to template
-        dist = self.distance(mx, my)
+            # Compute distance to template
+            dist = self.distance(mx, my)
+            print 'dist: ' + '{0:0.4f}'.format(dist)
 
-        # Logistic normalization to (0, 1)
-        speed = 1.0 / (1 + exp(-0.1*(dist-50)))
+            # Logistic normalization to (0, 1)
+            speed = 1.0 / (1 + exp(-0.1*(dist-50)))
+
+            # Determine direction
+            direc = self.outside(mx, my)
+
+            # Move the motor
+            print 'new speed: ' + '{0:.4f}'.format(speed)
+            self.pi.move(self.outside(mx, my), speed)
+
+            # Write error to image
+            cv.putText(img, 'Error: ' + ('+' if direc else '-') + '{0:.4f}'.format(speed),
+                       (40,40), cv.FONT_HERSHEY_SIMPLEX, 0.75, (0,0,255), 2)
+        else:
+            # Stop the motor until we regain tracking
+            self.pi.stop()
 
         # Write image
         cv.circle(img, (self.cx, self.cy), self.rad, (0,0,255), 3)
-        cv.putText(img, 'Error: {0:.4f}'.format(speed), (40,40),
-                   cv.FONT_HERSHEY_SIMPLEX, 0.75, (0,0,255), 2)
-        self.out.write(frame)
+        self.out.write(img)
 
-        # Move the motor
-        self.pi.move(self.outside(mx, my), speed)
 
 if __name__ == "__main__":
-    controller = Controller()
-    while True:
-        controller.control()
+    controller = Controller(180, 120, 350)
+    try:
+        while True:
+            controller.control()
+    except KeyboardInterrupt:
+        controller.pi.stop()

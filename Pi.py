@@ -39,11 +39,12 @@ class Pi(object):
 
     def move(self, direction, speed):
         """ Move the motor with the specified parameters.
-            This function maps (0,1) -> (0, 60) so that the motor
+            This function maps (0,1) -> (20, 60) so that the motor
             doesn't run on full blast and go off the track.
         """
         gpio.output(self.digpin, direction)
-        self.pwm.ChangeDutyCycle(60 * speed)
+        scaled = 40*speed + 20
+        self.pwm.ChangeDutyCycle(int(scaled))
 
     def stop(self):
         """ Stop moving the motor. """

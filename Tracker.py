@@ -52,13 +52,8 @@ class Tracker(object):
         if ok:
             x,y,w,h = map(int, box)
             img = cv.rectangle(frame, (x,y), (x+w,y+h), 255, 2)
+            return (img, (x, y, w, h))
         else:
             img = cv.putText(frame, 'Tracking failure detected', (100,80),
                        cv.FONT_HERSHEY_SIMPLEX, 0.75, (0,0,255), 2)
-
-        # Draw frame and return box coords
-#         cv.imshow('window', img)
-        if ok:
-            return (img, x, y, w, h)
-        else:
-            return None
+            return (img, None)

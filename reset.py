@@ -4,5 +4,19 @@ from Pi import Pi
 from time import sleep
 
 pi = Pi()
-pi.move(False, 0.8)
-sleep(5)
+
+# Set forward position
+pi.move(True, 0.4)
+try:
+    while True:
+        pass
+except KeyboardInterrupt:
+    pi.stop()
+
+# Set backwards position
+pi.move(False, 0.4)
+try:
+    while True:
+        pass
+except KeyboardInterrupt:
+    pi.stop()
