@@ -1,12 +1,11 @@
 #! /usr/bin/python2
-# Raspberry Pi Interface
+# Control Program (Error correcting)
 # Senior Design Group 4
 # Casey O'Neill
 
 import cv2 as cv
-import numpy as np
-from Pi import Pi
 from math import sqrt, exp
+from Motor import Motor
 from Tracker import Tracker
 
 class Controller(object):
@@ -16,8 +15,8 @@ class Controller(object):
         self.cy = cy
         self.rad = rad
 
-        # Add Raspberry Pi Device
-        self.pi = Pi()
+        # Add Raspberry Pi device
+        self.motor = Motor()
 
         # Initialize tracker, get template/trackpoint
         self.tracker = Tracker('img.jpg')
@@ -59,7 +58,7 @@ class Controller(object):
         cv.imwrite('template.jpg', cpy)
         self.cx = cx
         self.cy = cy
-        self.rad = radius
+        self.rad = int(radius)
 
     def distance(self, x, y):
         """ Distance between a point (x,y) and the nearest point
@@ -89,36 +88,34 @@ class Controller(object):
             mx = (x + float(x+w)) / 2
             my = (y + float(y+h)) / 2
 
-            # Compute distance to template
+            # Compute distance to template, Logistically normalize it to (0,1)
+            direc = self.outside(mx, my)
             dist = self.distance(mx, my)
-            print 'dist: ' + '{0:0.4f}'.format(dist)
-
-            # Logistic normalization to (0, 1)
             speed = 1.0 / (1 + exp(-0.1*(dist-50)))
 
-            # Determine direction
-            direc = self.outside(mx, my)
-
             # Move the motor
-            print 'new speed: ' + '{0:.4f}'.format(speed)
-            self.pi.move(self.outside(mx, my), speed)
+            self.motor.move(direc, speed)
+            print 'Done moving motor.'
 
             # Write error to image
             cv.putText(img, 'Error: ' + ('+' if direc else '-') + '{0:.4f}'.format(speed),
                        (40,40), cv.FONT_HERSHEY_SIMPLEX, 0.75, (0,0,255), 2)
         else:
             # Stop the motor until we regain tracking
-            self.pi.stop()
+            print 'Lost tracking, stopping motor.'
+            self.motor.stop()
 
         # Write image
-        cv.circle(img, (self.cx, self.cy), self.rad, (0,0,255), 3)
+        cv.circle(img, (self.cx, self.cy), self.rad, (0,0,255), 2)
         self.out.write(img)
 
 
 if __name__ == "__main__":
-    controller = Controller(180, 120, 350)
-    try:
-        while True:
+    controller = Controller(180, 110, 350)
+    while True:
+        cmd = raw_input('Press enter to update tracking (q to quit): ')
+        if cmd == 'q':
+            controller.motor.stop()
+            exit()
+        else:
             controller.control()
-    except KeyboardInterrupt:
-        controller.pi.stop()

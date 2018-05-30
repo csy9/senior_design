@@ -24,7 +24,7 @@ class Tracker(object):
         # Initialize tracker
         box = cv.selectROI(img, False)
         self.initbox = box
-        self.tracker = cv.TrackerMedianFlow_create()
+        self.tracker = cv.TrackerMIL_create()
         self.tracker.init(img, box)
 
         # Create window for displaying images to
@@ -46,7 +46,7 @@ class Tracker(object):
         # Update tracking frame
         frame = self._capture()
         ok, box = self.tracker.update(frame)
-        print ok, box
+        print 'Object found: ' + str(ok)
 
         # Draw bounding box
         if ok:
