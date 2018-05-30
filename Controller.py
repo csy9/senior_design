@@ -3,45 +3,39 @@
 # Senior Design Group 4
 # Casey O'Neill
 
-# import Pi
-from Tracker import Tracker
 import cv2 as cv
 import numpy as np
+from Pi import Pi
+from math import sqrt, exp
+from Tracker import Tracker
 
 class Controller(object):
     """ Implementation of discrete controller for the magnet. """
-    def __init__(self, Kp=1, Ki=0, Kd=0):
+    def __init__(self, Kp=1, Kd=0):
         self.Kp = Kp
-        self.Ki = Ki
         self.Kd = Kd
-        self.integral = 0
-        self.dt = 1
         self.prev_err = 0
+        self.cx = None
+        self.cy = None
+        self.rad = None
 
-        # Wait to get tracking info
+        # Add Raspberry Pi Device
+        self.pi = Pi()
+
+        # Initialize tracker, get template/trackpoint
         self.tracker = Tracker('img.jpg')
-        self.template = self._getTemplate()
+        raw_input('Hit enter to specify template...')
+        self._getTemplate()
+        raw_input('Hit enter to specify tracking object...')
+        self.tracker.setTrackpoint()
 
-        # Set initial midpoint
-        x,y,w,h = self.tracker.initbox
-        self.prevmidpoint = ((x + x+w)/2, (y + y+h)/2)
-
-#     def _getTemplate(self):
-#         """ Capture image and obtain thresholded mask for the trajectory template """
-#         # Read image
-#         img = self.tracker._capture()
-#         # Convert to HSV
-#         hsv = cv.cvtColor(img, cv.COLOR_BGR2HSV)
-#         # mask of green (36,0,0) ~ (70, 255,255)
-#         mask = cv.inRange(hsv, (36, 0, 0), (70, 255,255))
-#         # slice the green
-#         imask = mask > 0
-#         green = np.zeros_like(img, np.uint8)
-#         green[imask] = img[imask]
-#         return green
+        # Make video output writer
+        fourcc = cv.VideoWriter_fourcc(*'XVID')
+        self.out = cv.VideoWriter('output.avi', fourcc, 20.0, 
+                                  (self.tracker.w, self.tracker.h))
 
     def _getTemplate(self):
-        """ Capture image and obtain thresholded mask for the trajectory template """
+        """ Capture image and obtain circle parameters for the trajectory template """
         # Read image
         img = self.tracker._capture()
         # Get satisfying template
@@ -50,48 +44,70 @@ class Controller(object):
         cv.waitKey(0)
         while True:
             # Prompt for circle center
-            center = raw_input('Center of circle ("x,y"):')
+            center = raw_input('Center of circle ("x,y"): ')
             cx, cy = map(int, center.split(','))
-            radius = raw_input('Radius of circle:')
+            radius = raw_input('Radius of circle: ')
             # Draw circle
             cpy = img.copy()
             cv.circle(cpy, (cx, cy), int(radius), (0,0,255), 1)
             cv.imshow('win', cpy)
             cv.waitKey(0)
             # Ask if it's all good
-            ok = raw_input('Is it ok?')
+            ok = raw_input('Is it ok? (y/n): ')
             if ok == 'y':
                 break
 
-        return cpy
+        # Write template image, save circle parameters
+        cv.imwrite('template.jpg', cpy)
+        self.cx = cx
+        self.cy = cy
+        self.rad = radius
 
- 
+    def distance(self, x, y):
+        """ Distance between a point (x,y) and the nearest point
+            on the template circle.
+        """
+        dx = self.cx - x
+        dy = self.cy - y
+        return abs(sqrt(dx**2 + dy**2) - self.rad)
 
-    def _findError(self):
-        # Get tracking information
-        ret = self.tracker.update()
-        if ret:
-            # x,y - upper left coordinates
-            x, y, w, h = ret
-            # Find midpoint of bounding box
-            midpoint = ((x + x+w)/2, (y + y+h)/2)
-            # Compute slope to figure out desired dimension of error
-            slope = (midpoint[1] - self.prevmidpoint[1]) / float(midpoint[0] - self.prevmidpoint[0])
+    def outside(self, x, y):
+        """ True if point (x,y) is outside the template circle.
+            False otherwise. Magnet should be moved close if True.
+        """
+        dx = self.cx - x
+        dy = self.cy - y
+        dc = abs(sqrt(dx**2 + dy**2))
+        return dc > self.rad
 
-            # Moving primarily down; compute lateral error
-            if slope > 1:
-                templatepos = self.template
-            else:
-                templatepos = self.template
+    def control(self):
+        """ Control the motor position to guide magnet along trajectory. """
+        # Update box position and compute midpoint
+        img, box = self.tracker.update()
+        if box is None:
+            return
 
+        # Compute midpoint of box
+        x, y, w, h = box
+        mx = (x + float(x+w)) / 2
+        my = (y + float(y+h)) / 2
 
-    def pid(self):
-        """ Update PID controller """
-        err = self._findError()
-        self.integral += error * self.dt
-        derivative = (err - self.prev_err) / self.dt
-        self.prev_err = err
-        return self.Kp*err + self.Ki*self.integral + self.Kd*derivative
+        # Compute distance to template
+        dist = self.distance(mx, my)
+
+        # Logistic normalization to (0, 1)
+        speed = 1.0 / (1 + exp(-0.1*(dist-50)))
+
+        # Write image
+        cv.circle(img, (self.cx, self.cy), self.rad, (0,0,255), 3)
+        cv.putText(img, 'Error: {0:.4f}'.format(speed), (40,40),
+                   cv.FONT_HERSHEY_SIMPLEX, 0.75, (0,0,255), 2)
+        self.out.write(frame)
+
+        # Move the motor
+        self.pi.move(self.outside(mx, my), speed)
 
 if __name__ == "__main__":
     controller = Controller()
+    while True:
+        controller.control()

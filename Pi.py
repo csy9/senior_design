@@ -4,7 +4,6 @@
 # Casey O'Neill
 
 import RPi.GPIO as gpio
-# import time
 
 class Pi(object):
     """ Class designed for use on a Raspberry Pi 2.
@@ -40,22 +39,12 @@ class Pi(object):
 
     def move(self, direction, speed):
         """ Move the motor with the specified parameters.
-            This function maps (0,100) -> (0, 75) so that the motor
+            This function maps (0,1) -> (0, 60) so that the motor
             doesn't run on full blast and go off the track.
         """
         gpio.output(self.digpin, direction)
-        self.pwm.ChangeDutyCycle(75 * (float(speed)/100))
+        self.pwm.ChangeDutyCycle(60 * speed)
 
     def stop(self):
         """ Stop moving the motor. """
         self.pwm.ChangeDutyCycle(0)
-
-
-# if __name__ == "__main__":
-#     pi = Pi()
-#     pi.move(False, 100)
-#     time.sleep(4)
-#     pi.stop()
-#     time.sleep(2)
-#     pi.move(True, 100)
-#     time.sleep(4)
