@@ -28,7 +28,7 @@ class Tracker(object):
         self.tracker.init(img, box)
 
         # Create window for displaying images to
-        self.window = cv.namedWindow('window', cv.WINDOW_AUTOSIZE)
+        self.window = cv.namedWindow('win', cv.WINDOW_AUTOSIZE)
 
     def _capture(self):
         """ Capture image and save to 'img.jpg'; read result """

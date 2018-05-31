@@ -1,22 +1,22 @@
 #! /usr/bin/python2
 
-from Pi import Pi
+from Motor import Motor
 from time import sleep
 
-pi = Pi()
+motor = Motor()
 
 # Set forward position
-pi.move(True, 0.4)
+motor.move(True, 0.4)
 try:
     while True:
         pass
 except KeyboardInterrupt:
-    pi.stop()
+    motor.stop()
 
 # Set backwards position
-pi.move(False, 0.4)
+motor.move(False, 0.8)
 try:
     while True:
         pass
 except KeyboardInterrupt:
-    pi.stop()
+    motor.stop()

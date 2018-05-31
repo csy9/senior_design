@@ -36,7 +36,6 @@ class Controller(object):
         # Read image
         img = self.tracker._capture()
         # Get satisfying template
-        win = cv.namedWindow('win', cv.WINDOW_AUTOSIZE)
         cv.imshow('win', img)
         cv.waitKey(0)
         while True:
@@ -92,9 +91,10 @@ class Controller(object):
             direc = self.outside(mx, my)
             dist = self.distance(mx, my)
             speed = 1.0 / (1 + exp(-0.1*(dist-50)))
+            print 'outside: {0}, dist: {1:.2f}'.format(direc, dist)
 
             # Move the motor
-            self.motor.move(direc, speed)
+            self.motor.bump(direc, speed, 1)
             print 'Done moving motor.'
 
             # Write error to image
@@ -112,10 +112,9 @@ class Controller(object):
 
 if __name__ == "__main__":
     controller = Controller(180, 110, 350)
-    while True:
-        cmd = raw_input('Press enter to update tracking (q to quit): ')
-        if cmd == 'q':
-            controller.motor.stop()
-            exit()
-        else:
+    try:
+        while True:
             controller.control()
+    except KeyboardInterrupt:
+        controller.motor.finish()
+        exit()
